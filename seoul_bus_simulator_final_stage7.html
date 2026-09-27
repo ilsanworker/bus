@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Seoul City Bus Simulator · Final 7</title>
+<style>
+:root{--bg:#0b0d10;--panel:rgba(17,20,24,.88);--line:#343941;--text:#f5f7fa;--muted:#9da4ad;--blue:#1976ff;--green:#43d17a;--yellow:#ffd34e;--red:#ff5364}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans KR",sans-serif}
+#game{position:fixed;inset:0}
+canvas{display:block}
+button{font:inherit;border:0;color:inherit;cursor:pointer}
+#top{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(760px,calc(100vw - 24px));z-index:20;pointer-events:none}
+.routeCard{background:var(--panel);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(18px);border-radius:18px;padding:11px 14px;box-shadow:0 12px 38px #0006}
+.routeHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.routeTitle{display:flex;align-items:center;gap:8px}.badge{background:var(--blue);padding:4px 9px;border-radius:8px;font-weight:800}.small{font-size:11px;color:var(--muted)}
+.progress{position:relative;height:34px;margin:8px 3px}.track{position:absolute;left:7px;right:7px;top:14px;height:4px;background:#3c424a;border-radius:4px}.dots{position:relative;display:flex;justify-content:space-between}.dot{width:13px;height:13px;margin-top:9px;border-radius:50%;background:#777;border:2px solid #171a1e}.dot.pass{background:var(--blue)}.dot.current{background:#fff;box-shadow:0 0 0 5px #1976ff55}
+.currentRow{display:flex;justify-content:center;align-items:center;gap:18px}.currentRow strong{display:block;font-size:13px}.currentRow .arrow{color:var(--blue);font-size:20px}
+#hud{position:fixed;right:14px;bottom:18px;z-index:15;width:250px;pointer-events:none}
+.gauge{height:120px;border-radius:22px;background:rgba(10,12,15,.84);border:1px solid #ffffff12;backdrop-filter:blur(15px);padding:14px;text-align:center}
+.speed{font-size:48px;line-height:1;font-weight:800;letter-spacing:-2px}.unit{font-size:11px;color:#9da4ad}.gear{display:inline-block;margin-top:7px;padding:3px 9px;border-radius:7px;background:#242930;font-weight:800}
+.stats{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:#aaa}
+#satisfaction{color:#fff}.good{color:var(--green)!important}.warn{color:var(--yellow)!important}.bad{color:var(--red)!important}
+#event{position:fixed;left:50%;bottom:155px;transform:translate(-50%,18px);opacity:0;z-index:30;background:#15181d;color:#fff;border:1px solid #ffffff18;border-radius:13px;padding:10px 15px;font-size:13px;font-weight:700;transition:.2s;pointer-events:none;box-shadow:0 10px 30px #0006}.show{opacity:1!important;transform:translate(-50%,0)!important}
+#controls{position:fixed;inset:auto 0 0;z-index:18;pointer-events:none}
+#wheel{position:absolute;left:22px;bottom:25px;width:118px;height:118px;border:4px solid #ffffff44;border-radius:50%;background:#101318aa;pointer-events:auto;touch-action:none}
+#wheel:after{content:"";position:absolute;left:50%;top:12px;width:5px;height:43px;background:#fff;border-radius:4px;transform:translateX(-50%);opacity:.7}
+.pedals{position:absolute;right:20px;bottom:25px;display:flex;gap:10px;pointer-events:auto}.pedal{width:78px;height:92px;border-radius:16px;background:#161a20dd;border:1px solid #ffffff18;display:grid;place-items:center;font-weight:800;touch-action:none}.pedal.brake{border-color:#ff536455}.pedal.gas{border-color:#43d17a55}
+#actions{position:fixed;left:14px;top:100px;z-index:21;display:flex;gap:7px;pointer-events:auto}.action{padding:9px 11px;border-radius:11px;background:#15181ddd;border:1px solid #ffffff13;font-size:12px}
+#menu{position:fixed;inset:0;z-index:50;background:#07090cd9;backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:20px}.menuBox{width:min(430px,100%);background:#14171c;border:1px solid #ffffff12;border-radius:22px;padding:20px}.menuBox h2{margin:0 0 5px}.menuBox p{color:#999;font-size:12px;line-height:1.6}.row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #ffffff0d}.select{background:#222730;border-radius:9px;padding:7px 10px}.primary{width:100%;padding:12px;border-radius:12px;background:var(--blue);font-weight:800;margin-top:14px}
+#result{position:fixed;inset:0;z-index:60;background:#080a0ddf;display:none;align-items:center;justify-content:center;padding:20px}.resultBox{width:min(450px,100%);background:#15181d;border-radius:24px;padding:24px;border:1px solid #ffffff12}.score{font-size:60px;font-weight:900}.resultLine{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff0c}
+@media(max-width:700px){#hud{width:180px;right:9px;bottom:150px}.speed{font-size:38px}.gauge{height:103px}.pedal{width:65px;height:78px}#wheel{width:105px;height:105px;bottom:20px}.currentRow{gap:10px}.routeCard{padding:9px 11px}}
+@media(min-width:800px){#controls{display:none}}
+
+#bootScreen{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 25%,#26364d 0,#0b0d10 52%,#050607 100%);display:flex;align-items:center;justify-content:center;text-align:center}
+.bootPanel{width:min(520px,90vw);padding:35px 28px;border:1px solid #ffffff16;background:#101318d9;backdrop-filter:blur(22px);border-radius:30px;box-shadow:0 25px 90px #0009}.bootEmoji{font-size:68px;filter:drop-shadow(0 12px 20px #0008)}.bootTitle{font-size:38px;font-weight:950;line-height:.92;letter-spacing:-2px;margin-top:12px}.bootTitle span{color:#4d92ff}.bootSub{color:#9ca5b0;font-size:13px;line-height:1.6;margin:15px 0 22px}.bootButton,.bootGhost{width:100%;border-radius:14px;padding:13px;font-weight:800;margin-top:8px}.bootButton{background:#1976ff}.bootGhost{background:#ffffff0c;border:1px solid #ffffff14}.bootHint{font-size:10px;color:#6f7780;margin-top:15px}
+#routeModal{position:fixed;inset:0;z-index:110;background:#05070bd9;backdrop-filter:blur(18px);display:none;align-items:center;justify-content:center;padding:18px}.routeModalBox{width:min(680px,94vw);max-height:88vh;overflow:auto;background:#14171c;border:1px solid #ffffff12;border-radius:24px;padding:20px;box-shadow:0 30px 100px #000b}.modalHead{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:9px;letter-spacing:2px;color:#6f7780}.modalHead h2{margin:4px 0 14px;font-size:25px}.closeBtn{background:#ffffff0b;border:1px solid #ffffff12;border-radius:10px;width:38px;height:38px}.routeOption{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:#1b1f25;border:1px solid #ffffff0b;border-radius:16px;padding:14px;margin:8px 0;transition:.18s}.routeOption:hover{background:#242a32;transform:translateY(-1px)}.routeBadge{min-width:52px;padding:7px 8px;border-radius:9px;background:#1976ff;text-align:center;font-weight:900}.routeMeta{flex:1}.routeMeta b{display:block;font-size:14px}.routeMeta span{font-size:11px;color:#858d97}.routeArrow{font-size:18px;color:#77808c}
+#orientationOverlay{display:none;position:fixed;inset:0;z-index:200;background:#07090cf5;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:9px;padding:25px}.orientationOverlay div{font-size:60px}.orientationOverlay b{font-size:20px}.orientationOverlay small{color:#89919b;max-width:300px;line-height:1.5}
+@media(orientation:portrait) and (max-width:800px){#orientationOverlay{display:flex}#bootScreen,#routeModal{display:none!important}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="bootScreen">
+  <div class="bootPanel">
+    <div class="bootEmoji">🚌</div>
+    <div class="bootTitle">SEOUL BUS<br><span>SIMULATOR</span></div>
+    <div class="bootSub">서울역에서 출발하는 시내버스 운행 시뮬레이터</div>
+    <button type="button" id="startGame" class="bootButton">▶ 운행 시작</button>
+    <button type="button" id="routeSelectOpen" class="bootGhost">🗺️ 노선 선택</button>
+    <div class="bootHint">가로 화면 권장 · WASD / 방향키 · 모바일 핸들 지원</div>
+  </div>
+</div>
+<div id="routeModal">
+  <div class="routeModalBox">
+    <div class="modalHead"><div><div class="eyebrow">SEOUL BUS ROUTES</div><h2>🗺️ 노선 선택</h2></div><button type="button" id="routeClose" class="closeBtn">✕</button></div>
+    <div id="routeList"></div>
+  </div>
+</div>
+<div id="orientationOverlay"><div>📱↔️</div><b>가로 화면으로 전환해주세요</b><small>서울 시내버스 시뮬레이터는 가로 화면에 최적화되어 있어요.</small></div>
+
+<div id="top">
+ <div class="routeCard">
+  <div class="routeHead">
+   <div class="routeTitle"><span id="routeNo" class="badge">88</span><b id="routeName">일산 순환</b></div>
+   <div class="small">승객 만족도 <b id="satTop">100%</b></div>
+  </div>
+  <div class="progress"><div class="track"></div><div id="dots" class="dots"></div></div>
+  <div class="currentRow">
+   <div><div class="small">현재</div><strong id="currentStop">출발 대기</strong></div>
+   <div class="arrow">→</div>
+   <div><div class="small">다음</div><strong id="nextStop">킨텍스</strong></div>
+  </div>
+ </div>
+</div>
+
+<div id="actions">
+ <button class="action" id="cameraBtn">👁 시점</button>
+ <button class="action" id="doorBtn">🚪 문</button>
+ <button class="action" id="signalL">← 방향지시</button>
+ <button class="action" id="signalR">방향지시 →</button>
+ <button class="action" id="gearBtn">D</button><button class="action" id="pauseBtn">Ⅱ</button>
+</div>
+
+<div id="hud">
+ <div class="gauge">
+  <div id="speed" class="speed">0</div><div class="unit">km/h</div>
+  <div id="gear" class="gear">P</div>
+  <div class="stats"><span>승객 <b id="passengers">12</b></span><span id="satHud">만족도 100%</span></div>
+ </div>
+</div>
+
+<div id="event"></div>
+
+<div id="controls">
+ <div id="wheel"></div>
+ <div class="pedals">
+  <div id="brake" class="pedal brake">BRAKE</div>
+  <div id="gas" class="pedal gas">ACCEL</div>
+ </div>
+</div>
+
+<div id="menu">
+ <div class="menuBox">
+  <h2>시뮬레이터 설정</h2>
+  <p>그래픽과 차량 타입을 변경할 수 있어. 설정은 자동 저장돼.</p>
+  <div class="row"><span>그래픽</span><select id="quality" class="select"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+  <div class="row"><span>동력 방식</span><select id="power" class="select"><option value="CNG">CNG</option><option value="EV">전기</option></select></div>
+  <div class="row"><span>카메라</span><select id="camSelect" class="select"><option value="cockpit">운전석</option><option value="chase">추적</option><option value="front">전방</option></select></div>
+  <button id="resume" class="primary">게임으로 돌아가기</button>
+ </div>
+</div>
+
+<div id="result">
+ <div class="resultBox">
+  <div class="small">운행 종료</div>
+  <h2>오늘의 운행 리포트</h2>
+  <div id="finalScore" class="score">0</div>
+  <div class="resultLine"><span>승객 만족도</span><b id="rSat">0%</b></div>
+  <div class="resultLine"><span>신호 준수</span><b id="rTraffic">100</b></div>
+  <div class="resultLine"><span>급제동</span><b id="rBrake">0회</b></div>
+  <div class="resultLine"><span>운행 거리</span><b id="rDistance">0 km</b></div>
+  <button id="restart" class="primary">다시 운행</button>
+ </div>
+</div>
+
+<script>
+/* =========================================================
+   BOOT / ROUTE UI ISOLATION
+   This section intentionally has ZERO Three.js dependency.
+   The menu must work even when WebGL/CDN loading fails.
+   ========================================================= */
+(function(){
+  const modal=document.getElementById("routeModal");
+  const list=document.getElementById("routeList");
+  const start=document.getElementById("startGame");
+  const open=document.getElementById("routeSelectOpen");
+  const close=document.getElementById("routeClose");
+  const boot=document.getElementById("bootScreen");
+  const sub=document.querySelector(".bootSub");
+
+  const BOOT_ROUTES=[
+    ["103","서울역 ↔ 상계주공","간선"],["105","서울역 ↔ 상계주공7단지","간선"],
+    ["150","도봉산 ↔ 시흥대교","간선"],["201","서울역 ↔ 수택동","간선"],
+    ["704","서울역 ↔ 진관공영차고지","간선"],["7022","서울역 ↔ 구산동","지선"]
+  ];
+  let selected=localStorage.getItem("selectedRoute")||"103";
+
+  function renderBootRoutes(){
+    if(!list)return;
+    list.innerHTML="";
+    BOOT_ROUTES.forEach(r=>{
+      const b=document.createElement("button");
+      b.type="button"; b.className="routeOption";
+      b.innerHTML=`<span class="routeBadge">${r[0]}</span><span class="routeMeta"><b>${r[1]}</b><span>${r[2]} · 서울역 중심 운행 · 주요 정류장</span></span><span class="routeArrow">›</span>`;
+      b.addEventListener("click",function(){
+        selected=r[0]; localStorage.setItem("selectedRoute",selected);
+        modal.style.display="none";
+        if(sub) sub.textContent=`${r[0]}번 ${r[1]} · 운행 준비 완료`;
+        document.querySelectorAll(".routeOption").forEach(x=>x.style.outline="none");
+        b.style.outline="2px solid #1976ff";
+      });
+      list.appendChild(b);
+    });
+  }
+  renderBootRoutes();
+
+  open.addEventListener("click",e=>{e.preventDefault();renderBootRoutes();modal.style.display="flex";});
+  close.addEventListener("click",e=>{e.preventDefault();modal.style.display="none";});
+
+  start.addEventListener("click",async e=>{
+    e.preventDefault();
+    window.__selectedBootRoute=selected;
+    window.__startRequested=true;
+    if(sub) sub.textContent=`${selected}번 노선 운행 준비 중...`;
+    try{ if(screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape"); }catch(_){}
+    /* If the 3D engine is unavailable, do NOT leave a dead screen. */
+    setTimeout(()=>{
+      if(!window.__gameBooted){
+        if(sub) sub.textContent="3D 엔진 연결 대기 중 · Chrome/Safari에서 직접 열어주세요.";
+      }
+    },1800);
+  });
+
+  window.addEventListener("error",e=>{
+    if(!window.__gameBooted && sub && e && e.message){
+      sub.textContent="3D 엔진을 연결할 수 없습니다. 노선 선택은 정상이며, Chrome/Safari에서 파일을 직접 열어주세요.";
+    }
+  });
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.min.js"></script>
+<script>
+
+/* =========================================================
+   1. ROUTE DATA
+   실제 공개데이터를 넣을 수 있는 정규화 구조.
+   기본값은 게임 즉시 실행용 데모 데이터.
+   ========================================================= */
+const ROUTES = [
+ {id:"103",number:"103",name:"서울역 ↔ 상계주공",type:"간선",color:"#1976ff",stops:[
+  ["서울역버스환승센터","서울역"],["남대문시장","남대문"],["종로1가","종로"],["종로3가","탑골공원"],["동대문역","동대문"],["청량리역환승센터","청량리"],["월계역","월계"],["상계주공7단지","상계"]]},
+ {id:"105",number:"105",name:"서울역 ↔ 상계주공7단지",type:"간선",color:"#1976ff",stops:[
+  ["서울역버스환승센터","서울역"],["시청앞","시청"],["광화문","광화문"],["종로3가","종로"],["동대문역","동대문"],["신설동역","신설동"],["미아사거리역","미아"],["상계주공7단지","상계"]]},
+ {id:"150",number:"150",name:"도봉산 ↔ 시흥대교",type:"간선",color:"#1976ff",stops:[
+  ["서울역버스환승센터","서울역"],["남대문시장","남대문"],["시청·덕수궁","덕수궁"],["광화문","광화문"],["종로3가","종로"],["동대문역","동대문"],["신설동역","신설동"],["대림역","대림"],["시흥대교","시흥"]]},
+ {id:"201",number:"201",name:"서울역 ↔ 수택동",type:"간선",color:"#1976ff",stops:[
+  ["서울역버스환승센터","서울역"],["시청·덕수궁","덕수궁"],["광화문","광화문"],["종로1가","종로"],["동대문역","동대문"],["왕십리역","왕십리"],["구리역","구리"],["수택동차고지","수택"]]},
+ {id:"704",number:"704",name:"서울역 ↔ 진관공영차고지",type:"간선",color:"#1976ff",stops:[
+  ["서울역버스환승센터","서울역"],["시청·덕수궁","덕수궁"],["광화문","광화문"],["독립문","독립문"],["홍제역","홍제"],["구파발역","구파발"],["진관동","진관"],["진관공영차고지","진관"]]},
+ {id:"7022",number:"7022",name:"서울역 ↔ 구산동",type:"지선",color:"#43a047",stops:[
+  ["서울역버스환승센터","서울역"],["남대문시장","남대문"],["시청·덕수궁","덕수궁"],["광화문","광화문"],["부암동주민센터","부암동"],["구기동","구기"],["불광역","불광"],["구산동","구산"]]}
+];
+let ROUTE_DATA = null;
+function buildRoute(route){
+ return {id:route.id,number:route.number,name:route.name,type:route.type,color:route.color,stops:route.stops.map((a,i)=>({id:route.id+'-'+i,name:a[0],landmark:a[1],lat:null,lon:null,z:-i*105,dwell:6+Math.random()*3}))};
+}
+ROUTE_DATA=buildRoute(ROUTES.find(r=>r.number===window.__selectedBootRoute)||ROUTES.find(r=>r.number===localStorage.getItem("selectedRoute"))||ROUTES[0]);
+// 실제 JSON/CSV 변환 결과를 이 함수에 넣으면 됨.
+// {id,name,lat,lon,seq} 배열을 정규화한다.
+function normalizeRoute(raw){
+ if(!Array.isArray(raw)||!raw.length)return ROUTE_DATA;
+ return {...ROUTE_DATA,stops:raw.sort((a,b)=>(a.seq??0)-(b.seq??0)).map((s,i)=>({
+   id:s.id??String(i),name:s.name??`정류장 ${i+1}`,landmark:s.landmark??"",
+   lat:Number(s.lat),lon:Number(s.lon),z:-i*85,dwell:Number(s.dwell??7)
+ }))};
+}
+
+/* =========================================================
+   2. THREE WORLD
+   ========================================================= */
+const root=document.getElementById("game");
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9fb9d5);
+scene.fog=new THREE.Fog(0x9fb9d5,80,720);
+
+const camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.05,1400);
+camera.position.set(0,3.0,7);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+root.appendChild(renderer.domElement);
+
+const world=new THREE.Group();scene.add(world);
+const clock=new THREE.Clock();
+
+const hemi=new THREE.HemisphereLight(0xddeeff,0x44505c,1.8);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-80,120,80);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+
+// DAY / NIGHT + RAIN (Stage 5)
+let timeOfDay=12; let rainEnabled=false; let rainPoints=null;
+function createRain(count=700){
+ const g=new THREE.BufferGeometry(), a=new Float32Array(count*3);
+ for(let i=0;i<count;i++){a[i*3]=(Math.random()-.5)*180;a[i*3+1]=Math.random()*55;a[i*3+2]=-Math.random()*500;}
+ g.setAttribute("position",new THREE.BufferAttribute(a,3));
+ const m=new THREE.PointsMaterial({color:0xbfd9ff,size:.09,transparent:true,opacity:.55});
+ rainPoints=new THREE.Points(g,m);rainPoints.visible=rainEnabled;scene.add(rainPoints);
+}
+function updateEnvironment(dt){
+ timeOfDay=(timeOfDay+dt*.035)%24;
+ const daylight=Math.max(0,Math.sin((timeOfDay-6)/12*Math.PI));
+ sun.intensity=.25+1.95*daylight; hemi.intensity=.45+1.35*daylight;
+ const sky=new THREE.Color().setHSL(.58,.28,.18+.45*daylight);scene.background.copy(sky);scene.fog.color.copy(sky);
+ if(rainPoints){rainPoints.visible=rainEnabled;const p=rainPoints.geometry.attributes.position.array;for(let i=1;i<p.length;i+=3){p[i]-=28*dt;if(p[i]<0)p[i]=55;}rainPoints.geometry.attributes.position.needsUpdate=true;}
+}
+createRain(850);
+
+const roadMat=new THREE.MeshStandardMaterial({color:0x25282d,roughness:.95});
+const laneMat=new THREE.MeshBasicMaterial({color:0xd7d7d7});
+const grassMat=new THREE.MeshStandardMaterial({color:0x4c7650,roughness:1});
+const buildingMats=[0xb9bec5,0xd5d0c8,0x9aa5b1,0xc7cbd0].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85}));
+
+function box(w,h,d,mat,x=0,y=0,z=0){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;
+}
+
+function makeRoad(){
+ for(let i=0;i<18;i++){
+  const z=-i*100+50;
+  const road=box(18,.18,100,roadMat,0,0,z);world.add(road);
+  const left=box(.18,.03,100,laneMat,-4.5,.11,z);world.add(left);
+  const right=box(.18,.03,100,laneMat,4.5,.11,z);world.add(right);
+  for(let k=-3;k<4;k++){
+   const dash=box(.14,.035,8,laneMat,0,.12,z+k*16);world.add(dash);
+  }
+  const sidewalkL=box(2,.35,100,boxMat(0x9a9a96),-10,.15,z);
+  const sidewalkR=box(2,.35,100,boxMat(0x9a9a96),10,.15,z);
+  world.add(sidewalkL,sidewalkR);
+ }
+}
+function boxMat(c){return new THREE.MeshStandardMaterial({color:c,roughness:.9})}
+
+function makeCity(){
+ for(let i=0;i<75;i++){
+  const side=i%2?-1:1;
+  const z=-i*27-20;
+  const h=10+Math.random()*48;
+  const w=7+Math.random()*14;
+  const b=box(w,h,18+Math.random()*12,buildingMats[i%buildingMats.length],side*(15+Math.random()*10),h/2,z);
+  world.add(b);
+ }
+ // 랜드마크 표지
+ ROUTE_DATA.stops.forEach(s=>{
+   const pole=box(.15,5,.15,new THREE.MeshStandardMaterial({color:0x55585d}),8,2.5,s.z);
+   const sign=box(5,.9,.15,new THREE.MeshStandardMaterial({color:0x1976ff}),8,4.8,s.z);
+   world.add(pole,sign);
+ });
+}
+makeRoad();makeCity();
+
+/* =========================================================
+   3. BUS
+   ========================================================= */
+let bus=new THREE.Group();
+let busBody;
+function makeFallbackBus(){
+ bus=new THREE.Group();
+ busBody=box(3.0,3.25,12.0,new THREE.MeshStandardMaterial({color:0x1675e8,metalness:.1,roughness:.38}),0,2.0,0);
+ bus.add(busBody);
+ const lower=box(3.03,1.0,11.9,new THREE.MeshStandardMaterial({color:0xf0f2f5,roughness:.35}),0,.95,0);bus.add(lower);
+ const windows=box(3.04,1.35,8.7,new THREE.MeshStandardMaterial({color:0x1b2b3a,metalness:.2,roughness:.18}),0,2.7,.15);bus.add(windows);
+ const bumper=box(3.08,.35,.35,new THREE.MeshStandardMaterial({color:0x22252a}),0,.65,-6);bus.add(bumper);
+ const wheelMat=new THREE.MeshStandardMaterial({color:0x141618,roughness:.85});
+ for(const z of [-4.1,4.0]){
+  for(const x of [-1.58,1.58]){
+   const w=new THREE.Mesh(new THREE.CylinderGeometry(.72,.72,.38,24),wheelMat);
+   w.rotation.z=Math.PI/2;w.position.set(x,.78,z);bus.add(w);
+  }
+ }
+ // mirrors
+ for(const x of [-2.0,2.0]){const m=box(.12,.65,.12,new THREE.MeshStandardMaterial({color:0x111316}),x,3.0,-4.7);bus.add(m)}
+ world.add(bus);
+}
+makeFallbackBus();
+
+async function loadBusGLB(url="assets/bus.glb"){
+ showEvent("GLB 버스 모델은 별도 assets 파일이 필요해요");
+ console.info("GLB loader is optional in the single-file build:",url);
+}
+
+/* =========================================================
+   4. COCKPIT
+   ========================================================= */
+const cockpit=new THREE.Group();
+const dash=box(3.4,.55,1.4,new THREE.MeshStandardMaterial({color:0x17191c,roughness:.65}),0,1.55,4.5);
+const dashScreen=box(1.2,.45,.04,new THREE.MeshStandardMaterial({color:0x101820,emissive:0x06111b}),0,1.85,3.78);
+cockpit.add(dash,dashScreen);
+const wheel=new THREE.Group();
+const wheelRing=new THREE.Mesh(new THREE.TorusGeometry(.62,.09,12,32),new THREE.MeshStandardMaterial({color:0x17191c,roughness:.5}));
+wheelRing.rotation.x=Math.PI/2;wheel.add(wheelRing);
+wheel.position.set(0,1.85,3.7);cockpit.add(wheel);
+world.add(cockpit);
+
+/* =========================================================
+   5. TRAFFIC LIGHTS / AI
+   ========================================================= */
+const trafficLights=[];
+function makeTrafficLight(z){
+ const g=new THREE.Group();g.position.set(-6,0,z);
+ const pole=box(.18,5,.18,new THREE.MeshStandardMaterial({color:0x44484d}),0,2.5,0);
+ const head=box(.6,1.8,.45,new THREE.MeshStandardMaterial({color:0x17191c}),0,5.0,0);
+ const red=new THREE.Mesh(new THREE.SphereGeometry(.14,12,12),new THREE.MeshBasicMaterial({color:0x550000}));
+ const yellow=new THREE.Mesh(new THREE.SphereGeometry(.14,12,12),new THREE.MeshBasicMaterial({color:0x555000}));
+ const green=new THREE.Mesh(new THREE.SphereGeometry(.14,12,12),new THREE.MeshBasicMaterial({color:0x005500}));
+ red.position.set(0,5.45,-.25);yellow.position.set(0,5,-.25);green.position.set(0,4.55,-.25);
+ g.add(pole,head,red,yellow,green);g.userData={state:"green",red,yellow,green,t:Math.random()*12};world.add(g);trafficLights.push(g);
+}
+[-170,-390,-610,-830].forEach(makeTrafficLight);
+
+// SIMPLE ROAD TRAFFIC AI (Stage 4/7)
+const aiCars=[];
+function spawnAICar(){
+ const g=new THREE.Group(); const body=box(1.55,1.0,3.6,new THREE.MeshStandardMaterial({color:[0x777777,0x20242a,0xb43d3d,0xddd5c2][Math.floor(Math.random()*4)]}),0,.8,0);g.add(body);
+ g.position.set((Math.random()<.5?-1:1)*4.2,0,-80-Math.random()*650);g.userData={speed:16+Math.random()*18,lane:Math.random()<.5?-1:1};world.add(g);aiCars.push(g);
+}
+for(let i=0;i<9;i++)spawnAICar();
+function updateAICars(dt){
+ aiCars.forEach(c=>{
+  const light=trafficLights.find(l=>Math.abs((l.position.z+world.position.z)-c.position.z)<15);
+  let v=c.userData.speed;
+  if(light?.userData.state==="red")v=Math.min(v,3);
+  c.position.z+=v*dt;
+  if(c.position.z>20)c.position.z=-850-Math.random()*250;
+  const gap=Math.abs(c.position.z-bus.position.z);
+  if(gap<7&&Math.abs(c.position.x-bus.position.x)<2.1&&speedKmh>45){penalty(1,"앞차 근접");c.position.z+=6;}
+ });
+}
+
+
+function updateLights(dt){
+ trafficLights.forEach(l=>{
+   l.userData.t+=dt;
+   const p=l.userData.t%18;
+   l.userData.state=p<8?"green":p<10?"yellow":"red";
+   l.userData.red.material.color.setHex(l.userData.state==="red"?0xff2020:0x330000);
+   l.userData.yellow.material.color.setHex(l.userData.state==="yellow"?0xffd52e:0x332d00);
+   l.userData.green.material.color.setHex(l.userData.state==="green"?0x22dd66:0x003300);
+ });
+}
+
+/* =========================================================
+   6. DELIVERY BIKES
+   ========================================================= */
+const bikes=[];
+function spawnBike(){
+ const g=new THREE.Group();
+ const body=box(.85,.55,1.9,new THREE.MeshStandardMaterial({color:Math.random()<.5?0x151515:0x303030}),0,.65,0);
+ const rider=box(.55,.7,.55,new THREE.MeshStandardMaterial({color:0x252525}),0,1.2,0);
+ g.add(body,rider);g.position.set((Math.floor(Math.random()*3)-1)*4.2,0, -100-Math.random()*600);
+ g.userData={lane:Math.round(g.position.x/4.2),targetLane:null,state:"cruise",speed:13+Math.random()*12,timer:2+Math.random()*5,aggressive:Math.random()<.4};
+ world.add(g);bikes.push(g);
+}
+for(let i=0;i<7;i++)spawnBike();
+
+function updateBikes(dt){
+ bikes.forEach(b=>{
+   const u=b.userData;u.timer-=dt;
+   if(u.state==="cruise"&&u.timer<=0){
+     if(Math.random()<(u.aggressive?.45:.18)){
+       u.targetLane=Math.max(-1,Math.min(1,u.lane+(Math.random()<.5?-1:1)));
+       u.state="changing";
+     }
+     u.timer=2+Math.random()*5;
+   }
+   if(u.state==="changing"){
+     const tx=u.targetLane*4.2;
+     b.position.x=THREE.MathUtils.damp(b.position.x,tx,4,dt);
+     if(Math.abs(b.position.x-tx)<.06){u.lane=u.targetLane;u.state="cruise";u.timer=1+Math.random()*4}
+   }
+   b.position.z+=u.speed*dt;
+   if(b.position.z>20)b.position.z=-850;
+   const dx=Math.abs(b.position.x-bus.position.x),dz=Math.abs(b.position.z-bus.position.z);
+   if(dx<2.7&&dz<7&&u.state==="changing"){penalty(3,"배달 오토바이 끼어들기")}
+ });
+}
+
+/* =========================================================
+   7. PHYSICS / INPUT
+   ========================================================= */
+let speedKmh=0, gear="D", throttle=0, brake=0, steer=0;
+let distanceKm=0, harshBrakes=0, passengerSatisfaction=100, trafficScore=100;
+let lastSpeed=0,lastBrakePenalty=0,paused=true;
+const keys={};
+addEventListener("keydown",e=>{
+ keys[e.key.toLowerCase()]=true;
+ if(e.key==="Escape" || e.key.toLowerCase()==="m")toggleMenu();
+ if(e.key.toLowerCase()==="q")setSignal("left");
+ if(e.key.toLowerCase()==="e")setSignal("right");
+ if(e.key===" "){brake=1}
+});
+addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;if(e.key===" ")brake=0});
+addEventListener("keydown",e=>{if(e.key.toLowerCase()==="r"){gear="R"}else if(e.key.toLowerCase()==="n"){gear="N"}else if(e.key.toLowerCase()==="d"){gear="D"}else if(e.key.toLowerCase()==="p"){gear="P"} document.getElementById("gear").textContent=gear;document.getElementById("gearBtn").textContent=gear;});
+
+function readInput(){
+ if(innerWidth>700){
+  throttle=keys.w||keys.arrowup?1:0;
+  brake=keys.s||keys.arrowdown||keys[" "]?1:0;
+  steer=(keys.a||keys.arrowleft?-1:0)+(keys.d||keys.arrowright?1:0);
+ }
+}
+function updatePhysics(dt){
+ readInput();
+ if(paused)return;
+ if(gear==="P"){speedKmh*=Math.pow(.05,dt);return}
+ const driveForce = gear==="D" ? throttle*4.2 : gear==="R" ? -throttle*5.0 : 0;
+ const drag=.018*speedKmh*Math.abs(speedKmh);
+ speedKmh+= (driveForce-drag-brake*9.5)*dt;
+ speedKmh=THREE.MathUtils.clamp(speedKmh,-18,75);
+ if(Math.abs(speedKmh)<.25&&!throttle) speedKmh=0;
+ bus.rotation.y=THREE.MathUtils.damp(bus.rotation.y,-steer*.045,7,dt);
+ const dz=-(speedKmh/3.6)*dt;
+ world.position.z+=-dz;
+ bus.position.x=THREE.MathUtils.damp(bus.position.x,steer*1.4,5,dt);
+ distanceKm+=Math.abs(speedKmh)*dt/3600;
+ wheel.rotation.z=THREE.MathUtils.damp(wheel.rotation.z,-steer*.7,8,dt);
+ if(brake>.35&&lastSpeed-speedKmh>7&&performance.now()-lastBrakePenalty>3000){
+   harshBrakes++;lastBrakePenalty=performance.now();penalty(4,"급제동");playAirBrake();
+ }
+ lastSpeed=speedKmh;
+}
+
+/* =========================================================
+   8. AUDIO
+   ========================================================= */
+let audioCtx=null,engineOsc=null,engineGain=null,indicatorTimer=null,indicatorSide=null;
+if(!localStorage.power) localStorage.power="CNG";
+function initAudio(){
+ if(audioCtx)return;
+
+ const AC=window.AudioContext||window.webkitAudioContext; if(!AC){showEvent("이 브라우저는 Web Audio를 지원하지 않습니다.");return;} audioCtx=new AC();
+ engineOsc=audioCtx.createOscillator();engineGain=audioCtx.createGain();
+ engineOsc.type="sawtooth";engineGain.gain.value=.0001;
+ engineOsc.connect(engineGain).connect(audioCtx.destination);engineOsc.start();
+}
+function engineSound(){
+ if(!audioCtx)return;
+ if(audioCtx.state==="suspended") audioCtx.resume();
+ const f=(localStorage.power==="EV"?70:55)+Math.abs(speedKmh)*(localStorage.power==="EV"?12:7)+throttle*80;
+ engineOsc.frequency.setTargetAtTime(f,audioCtx.currentTime,.05);
+ engineGain.gain.setTargetAtTime(Math.min(.045,.004+Math.abs(speedKmh)/1100+throttle*.018),audioCtx.currentTime,.06);
+}
+function tone(f,d=.12,v=.06,type="sine"){
+ if(!audioCtx)return;
+ const o=audioCtx.createOscillator(),g=audioCtx.createGain(),n=audioCtx.currentTime;
+ o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(v,n+.01);g.gain.exponentialRampToValueAtTime(.0001,n+d);
+ o.connect(g).connect(audioCtx.destination);o.start(n);o.stop(n+d+.02);
+}
+function playTmoney(){tone(1450,.08,.12);setTimeout(()=>tone(2050,.12,.09),60)}
+function playIndicator(){tone(900,.09,.025,"square")}
+function playAirBrake(){
+ if(!audioCtx)return;
+ const b=audioCtx.createBuffer(1,audioCtx.sampleRate*.45,audioCtx.sampleRate),d=b.getChannelData(0);
+ for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.8);
+ const s=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type="highpass";f.frequency.value=900;g.gain.value=.12;s.buffer=b;s.connect(f).connect(g).connect(audioCtx.destination);s.start();
+}
+function setSignal(side){
+ initAudio();
+ if(indicatorSide===side){indicatorSide=null;clearInterval(indicatorTimer);return}
+ indicatorSide=side;clearInterval(indicatorTimer);playIndicator();indicatorTimer=setInterval(playIndicator,620);
+}
+function speak(text){
+ if(!("speechSynthesis"in window))return;
+ speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="ko-KR";u.rate=.82;u.pitch=.9;u.volume=.85;speechSynthesis.speak(u);
+}
+function announceStop(name){
+ speak(`잠시 후 ${name}에 도착합니다.`);
+ setTimeout(()=>speak(`이번 정류장은 ${name}입니다.`),3500);
+}
+
+/* =========================================================
+   9. ROUTE / STOPS
+   ========================================================= */
+let stopIndex=-1,announced=-1,stoppedAt=-1,stopTimer=0,routeFinished=false;
+function initRouteUI(){
+ document.getElementById("routeNo").textContent=ROUTE_DATA.number;
+ document.getElementById("routeName").textContent=ROUTE_DATA.name;
+ const dots=document.getElementById("dots");dots.innerHTML="";
+ ROUTE_DATA.stops.forEach((s,i)=>{const d=document.createElement("div");d.className="dot";d.title=s.name;d.dataset.i=i;dots.appendChild(d)});
+ updateRouteUI();
+}
+function updateRouteUI(){
+ document.getElementById("currentStop").textContent=ROUTE_DATA.stops[stopIndex]?.name||"출발 대기";
+ document.getElementById("nextStop").textContent=ROUTE_DATA.stops[stopIndex+1]?.name||"운행 종료";
+ document.querySelectorAll(".dot").forEach((d,i)=>{d.classList.toggle("pass",i<stopIndex);d.classList.toggle("current",i===stopIndex)});
+}
+function stopSystem(dt){
+ const i=stopIndex+1;if(i>=ROUTE_DATA.stops.length)return;
+ const s=ROUTE_DATA.stops[i],z=s.z+world.position.z,d=Math.abs(bus.position.z-z);
+ if(d<95&&announced!==i){announced=i;announceStop(s.name)}
+ if(d<8&&Math.abs(speedKmh)<3&&stoppedAt!==i){
+   stopIndex=i;stoppedAt=i;stopTimer=s.dwell;updateRouteUI();playTmoney();speak("삑, 승차입니다.");showEvent(`${s.name} · 승객 승하차`);
+   const change=Math.floor(Math.random()*9)-2;passengers=Math.max(0,passengers+change);document.getElementById("passengers").textContent=passengers;
+ }
+ if(stoppedAt===i&&stopTimer>0){
+   stopTimer-=dt;
+   if(stopTimer<=0){stoppedAt=-1}
+ }
+}
+
+/* =========================================================
+   10. PASSENGER / PENALTY
+   ========================================================= */
+let passengers=12;
+function penalty(amount,reason){
+ passengerSatisfaction=Math.max(0,passengerSatisfaction-amount);
+ if(reason.includes("신호"))trafficScore=Math.max(0,trafficScore-amount);
+ updateSat();showEvent(`⚠ ${reason} · 만족도 -${amount}%`);
+}
+function updateSat(){
+ const t=Math.round(passengerSatisfaction);document.getElementById("satTop").textContent=t+"%";document.getElementById("satHud").textContent="만족도 "+t+"%";
+ document.getElementById("satTop").className=t>=75?"good":t>=45?"warn":"bad";
+}
+function checkLights(){
+ trafficLights.forEach(l=>{
+   if(l.userData.state!=="red")return;
+   const d=Math.abs(bus.position.z-(l.position.z+world.position.z));
+   if(d<6&&Math.abs(speedKmh)>8){
+    if(!l.userData.violate||performance.now()-l.userData.violate>5000){l.userData.violate=performance.now();penalty(8,"신호 위반")}
+   }
+ });
+}
+
+/* =========================================================
+   11. CAMERA
+   ========================================================= */
+let cameraMode=localStorage.cam||"cockpit";
+function updateCamera(dt){
+ let target=new THREE.Vector3();
+ if(cameraMode==="cockpit"){
+   const p=new THREE.Vector3(0,3.0,4.0);bus.localToWorld(p);camera.position.lerp(p,1-Math.pow(.001,dt));
+   const look=new THREE.Vector3(0,2.9,-20);bus.localToWorld(look);target.copy(look);
+ }else if(cameraMode==="front"){
+   const p=new THREE.Vector3(0,3.0,-7);bus.localToWorld(p);camera.position.lerp(p,.12);const look=new THREE.Vector3(0,2.5,-30);bus.localToWorld(look);target.copy(look);
+ }else{
+   const p=new THREE.Vector3(0,5.3,15);bus.localToWorld(p);camera.position.lerp(p,.09);const look=new THREE.Vector3(0,2,0);bus.localToWorld(look);target.copy(look);
+ }
+ camera.lookAt(target);
+}
+
+/* =========================================================
+   ROUTE SELECTOR
+   ========================================================= */
+const bootScreen=document.getElementById("bootScreen");
+const routeModal=document.getElementById("routeModal");
+const routeList=document.getElementById("routeList");
+let gameStarted=false;
+let finishQueued=false;
+function renderRouteList(){
+ routeList.innerHTML="";
+ ROUTES.forEach(r=>{
+   const b=document.createElement("button");b.className="routeOption";b.innerHTML=`<span class="routeBadge">${r.number}</span><span class="routeMeta"><b>${r.name}</b><span>${r.type} · 서울역 출발 구간 포함 · ${r.stops.length}개 주요 정류장</span></span><span class="routeArrow">›</span>`;
+   b.onclick=()=>selectRoute(r);routeList.appendChild(b);
+ });
+}
+function selectRoute(r){
+ if(!r)return;
+ ROUTE_DATA=buildRoute(r);
+ stopIndex=-1;announced=-1;stoppedAt=-1;stopTimer=0;passengers=12;passengerSatisfaction=100;trafficScore=100;harshBrakes=0;distanceKm=0;
+ world.position.z=0;
+ initRouteUI();updateSat();document.getElementById("routeModal").style.display="none";showEvent(`${r.number}번 · ${r.name}`);
+}
+renderRouteList();
+document.getElementById("routeSelectOpen").addEventListener("click",(e)=>{e.preventDefault();routeModal.style.display="flex"});
+document.getElementById("routeClose").addEventListener("click",(e)=>{e.preventDefault();routeModal.style.display="none"});
+document.getElementById("startGame").addEventListener("click",async(e)=>{e.preventDefault();window.__startRequested=true;try{if(screen.orientation?.lock)await screen.orientation.lock("landscape")}catch(err){}});
+
+/* =========================================================
+   12. SETTINGS / QUALITY
+   ========================================================= */
+function applyQuality(q){
+ const cfg={low:{px:.75,shadow:512,fog:430},medium:{px:1.15,shadow:1024,fog:720},high:{px:Math.min(devicePixelRatio,1.7),shadow:2048,fog:950}}[q]||{px:1.15,shadow:1024,fog:720};
+ renderer.setPixelRatio(cfg.px);sun.shadow.mapSize.set(cfg.shadow,cfg.shadow);scene.fog.far=cfg.fog;localStorage.quality=q;
+}
+function toggleMenu(){const m=document.getElementById("menu");m.style.display=m.style.display==="flex"?"none":"flex";if(m.style.display==="flex")paused=true}
+document.getElementById("pauseBtn").onclick=()=>{paused=!paused;document.getElementById("pauseBtn").textContent=paused?"▶":"Ⅱ"};
+document.getElementById("gearBtn").onclick=()=>{ gear=gear==="D"?"N":gear==="N"?"R":gear==="R"?"P":"D"; document.getElementById("gearBtn").textContent=gear; document.getElementById("gear").textContent=gear; showEvent(`기어 ${gear}`); };
+document.getElementById("cameraBtn").onclick=()=>{cameraMode=cameraMode==="cockpit"?"chase":cameraMode==="chase"?"front":"cockpit";localStorage.cam=cameraMode;showEvent(cameraMode==="cockpit"?"운전석 시점":cameraMode==="chase"?"추적 시점":"전방 시점")};
+document.getElementById("doorBtn").onclick=()=>{showEvent("🚪 문 열림");playAirBrake()};
+document.getElementById("signalL").onclick=()=>setSignal("left");
+document.getElementById("signalR").onclick=()=>setSignal("right");
+document.getElementById("resume").onclick=()=>{document.getElementById("menu").style.display="none";paused=false};
+document.getElementById("quality").value=localStorage.quality||"medium";
+document.getElementById("power").value=localStorage.power||"CNG";
+document.getElementById("camSelect").value=cameraMode;
+document.getElementById("quality").onchange=e=>applyQuality(e.target.value);
+document.getElementById("power").onchange=e=>{localStorage.power=e.target.value;initAudio()};
+document.getElementById("camSelect").onchange=e=>{cameraMode=e.target.value;localStorage.cam=cameraMode};
+
+
+/* =========================================================
+   13. MOBILE CONTROLS
+   ========================================================= */
+function hold(el,on,off){
+ el.addEventListener("pointerdown",e=>{e.preventDefault();el.setPointerCapture?.(e.pointerId);on()});
+ ["pointerup","pointercancel","pointerleave"].forEach(t=>el.addEventListener(t,e=>{e.preventDefault();off()}));
+}
+hold(document.getElementById("gas"),()=>{initAudio();throttle=1},()=>throttle=0);
+hold(document.getElementById("brake"),()=>{initAudio();brake=1},()=>brake=0);
+const wh=document.getElementById("wheel");
+let wheelPointer=null;
+wh.addEventListener("pointerdown",e=>{wheelPointer=e.pointerId;wh.setPointerCapture(e.pointerId)});
+wh.addEventListener("pointermove",e=>{if(wheelPointer!==e.pointerId)return;const r=wh.getBoundingClientRect(),cx=r.left+r.width/2;steer=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.42),-1,1)});
+["pointerup","pointercancel"].forEach(t=>wh.addEventListener(t,()=>{wheelPointer=null;steer=0}));
+
+/* =========================================================
+   14. UI / EVENTS / RESULT
+   ========================================================= */
+let eventTimer;
+function showEvent(text){
+ const e=document.getElementById("event");e.textContent=text;e.classList.add("show");clearTimeout(eventTimer);eventTimer=setTimeout(()=>e.classList.remove("show"),1700);
+}
+function finishRoute(){
+ if(document.getElementById("result").style.display==="flex") return;
+ const score=Math.round((passengerSatisfaction+trafficScore+Math.max(0,100-harshBrakes*4)+100)/4);
+ document.getElementById("finalScore").textContent=score;
+ document.getElementById("rSat").textContent=Math.round(passengerSatisfaction)+"%";
+ document.getElementById("rTraffic").textContent=Math.round(trafficScore);
+ document.getElementById("rBrake").textContent=harshBrakes+"회";
+ document.getElementById("rDistance").textContent=distanceKm.toFixed(1)+" km";
+ document.getElementById("result").style.display="flex";paused=true;
+}
+document.getElementById("restart").onclick=()=>location.reload();
+
+/* =========================================================
+   15. RESIZE / INIT
+   ========================================================= */
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+applyQuality(localStorage.quality||"medium");
+initRouteUI();
+updateSat();
+
+renderer.domElement.addEventListener("pointerdown",()=>initAudio(),{once:true});
+document.addEventListener("keydown",()=>initAudio(),{once:true});
+
+/* 실제 GLB를 쓰고 싶다면 아래 주석 해제
+loadBusGLB("assets/bus.glb");
+*/
+
+let last=performance.now();
+function animate(now){
+ requestAnimationFrame(animate);
+ const dt=Math.min(.05,(now-last)/1000);last=now;window.__frameDT=dt;
+ if(window.__startRequested&&!gameStarted){
+   window.__startRequested=false; gameStarted=true; bootScreen.style.display="none"; paused=false; window.__gameBooted=true;
+   try{initAudio()}catch(e){}
+   showEvent(`${ROUTE_DATA.number}번 운행 시작 · 서울역`);
+ }
+ if(!paused){
+   updatePhysics(dt);
+   updateLights(dt);
+   updateAICars(dt);
+   updateBikes(dt);
+   updateEnvironment(dt);
+   stopSystem(dt);
+   checkLights();
+   engineSound();
+   updateCamera(dt);
+   document.getElementById("speed").textContent=Math.round(Math.abs(speedKmh));
+   document.getElementById("gear").textContent=gear;
+ }
+ renderer.render(scene,camera);
+ if(stopIndex>=ROUTE_DATA.stops.length-1&&!paused&&!routeFinished){ routeFinished=true; setTimeout(finishRoute,1200); }
+}
+animate(performance.now());
+
+/* =========================================================
+   16. OPTIONAL DATA IMPORT
+   JSON example:
+   [
+     {"id":"123","name":"정류장명","lat":37.5,"lon":126.9,"seq":1}
+   ]
+   ========================================================= */
+window.BusSimulator={
+ route:ROUTE_DATA,
+ normalizeRoute,
+ loadBusGLB,
+ setSignal,
+ speak,
+ finishRoute,
+ scene,
+ world,
+ bus
+};
+
+window.addEventListener("error",e=>{console.error(e.error||e.message);});
+if(typeof THREE==="undefined"){document.querySelector(".bootSub").textContent="Three.js를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.";document.getElementById("startGame").disabled=true;}
+</script>
+</body>
+</html>
